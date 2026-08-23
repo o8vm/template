@@ -1,0 +1,112 @@
+name: package official Lean 4.29 toolchain
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/bootstrap-lean429.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package-lean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download and verify official Lean 4.29.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          curl --fail --location --retry 5 --retry-all-errors \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/repos/leanprover/lean4/releases/tags/v4.29.0' \
+            --output out/release.json
+          jq -r '.assets[] | [.name, .size, .digest, .browser_download_url] | @tsv' \
+            out/release.json | tee out/assets.tsv
+          url="$(jq -r '.assets[] | select(.name == "lean-4.29.0-linux.tar.zst") | .browser_download_url' out/release.json)"
+          digest="$(jq -r '.assets[] | select(.name == "lean-4.29.0-linux.tar.zst") | .digest' out/release.json)"
+          test -n "$url" && test "$digest" != null
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output out/lean-4.29.0-linux.tar.zst "$url"
+          expected="${digest#sha256:}"
+          printf '%s  %s\n' "$expected" out/lean-4.29.0-linux.tar.zst | sha256sum --check
+          printf '%s\n' "$expected" > out/lean-4.29.0-linux.sha256
+          split --bytes=90M --numeric-suffixes=0 --suffix-length=2 \
+            out/lean-4.29.0-linux.tar.zst out/lean-4.29.0-linux.tar.zst.part-
+          rm out/lean-4.29.0-linux.tar.zst
+          ls -lh out
+
+      - name: Upload part 00
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.29.0-part-00
+          path: out/lean-4.29.0-linux.tar.zst.part-00
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload part 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.29.0-part-01
+          path: out/lean-4.29.0-linux.tar.zst.part-01
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload part 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.29.0-part-02
+          path: out/lean-4.29.0-linux.tar.zst.part-02
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload part 03
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.29.0-part-03
+          path: out/lean-4.29.0-linux.tar.zst.part-03
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload part 04
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.29.0-part-04
+          path: out/lean-4.29.0-linux.tar.zst.part-04
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload part 05
+        if: ${{ hashFiles('out/lean-4.29.0-linux.tar.zst.part-05') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.29.0-part-05
+          path: out/lean-4.29.0-linux.tar.zst.part-05
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload part 06
+        if: ${{ hashFiles('out/lean-4.29.0-linux.tar.zst.part-06') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.29.0-part-06
+          path: out/lean-4.29.0-linux.tar.zst.part-06
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.29.0-provenance
+          path: |
+            out/lean-4.29.0-linux.sha256
+            out/assets.tsv
+            out/release.json
+          compression-level: 9
+          retention-days: 1
