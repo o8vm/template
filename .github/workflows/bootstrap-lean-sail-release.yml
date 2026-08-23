@@ -96,3 +96,84 @@ jobs:
             out/lean/* out/sail/* out/manifest/*
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,assets \
             | tee release-result.json
+
+      - name: Upload Lean part 00
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-00
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-00
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-01
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-01
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-02
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-02
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 03
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-03
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-03
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 04
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-04
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-04
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 05
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-05
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-05
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 06
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-06
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-06
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Sail binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sail-v0.20.2-linux-x86_64
+          path: out/sail/sail-Linux-x86_64.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload toolchain manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-sail-toolchain-manifest
+          path: out/manifest/*
+          compression-level: 9
+          if-no-files-found: error
+          retention-days: 1
