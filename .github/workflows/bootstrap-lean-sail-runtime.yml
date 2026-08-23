@@ -1,0 +1,40 @@
+name: package pinned lean-sail runtime
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/bootstrap-lean-sail-runtime.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch exact lean-sail v4 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit=79b4d08505af29d88b3918f32d29840fae1fa191
+          git clone --filter=blob:none --no-checkout https://github.com/rems-project/lean-sail.git lean-sail
+          git -C lean-sail checkout --detach "$commit"
+          test "$(git -C lean-sail rev-parse HEAD)" = "$commit"
+          rm -rf lean-sail/.git
+          printf '%s\n' "$commit" > lean-sail/UPSTREAM-COMMIT
+          tar --sort=name --mtime='UTC 2026-08-24' --owner=0 --group=0 --numeric-owner \
+            -czf lean-sail-v4-source.tar.gz lean-sail
+          sha256sum lean-sail-v4-source.tar.gz > lean-sail-v4-source.tar.gz.sha256
+
+      - name: Upload source runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-sail-v4-source
+          path: |
+            lean-sail-v4-source.tar.gz
+            lean-sail-v4-source.tar.gz.sha256
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
