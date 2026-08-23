@@ -1,0 +1,179 @@
+name: publish temporary Lean and Sail bootstrap release
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/bootstrap-lean-sail-release.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish-toolchains:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RELEASE_TAG: toolchain-bootstrap-20260824
+      LEAN_SHA256: 4b3fb03c29a1e0a253fb1d11f9bae3725f19a0dc6fc09b3ea16d2c9df3349e2c
+    steps:
+      - name: Download, verify, and split official Lean 4.33.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out/lean out/sail out/manifest
+          lean_url='https://github.com/leanprover/lean4/releases/download/v4.33.0/lean-4.33.0-linux.tar.zst'
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output out/lean/lean-4.33.0-linux.tar.zst "$lean_url"
+          printf '%s  %s\n' "$LEAN_SHA256" out/lean/lean-4.33.0-linux.tar.zst | sha256sum --check
+          split --bytes=90M --numeric-suffixes=0 --suffix-length=2 \
+            out/lean/lean-4.33.0-linux.tar.zst \
+            out/lean/lean-4.33.0-linux.tar.zst.part-
+          rm out/lean/lean-4.33.0-linux.tar.zst
+          ls -lh out/lean
+
+      - name: Download official Sail 0.20.2 Linux x86_64 binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_json=out/manifest/sail-release.json
+          curl --fail --location --retry 5 --retry-all-errors \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/repos/rems-project/sail/releases/tags/0.20.2-binary' \
+            --output "$release_json"
+          jq -r '.assets[] | [.name, .size, .browser_download_url] | @tsv' "$release_json" \
+            | tee out/manifest/sail-assets.tsv
+          asset_url="$(jq -r '.assets[]
+            | select(.name == "sail-Linux-x86_64.tar.gz")
+            | .browser_download_url' "$release_json")"
+          test -n "$asset_url"
+          curl --fail --location --retry 5 --retry-all-errors \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            --output out/sail/sail-Linux-x86_64.tar.gz "$asset_url"
+          sha256sum out/sail/sail-Linux-x86_64.tar.gz \
+            | tee out/manifest/sail-binary.sha256
+
+      - name: Build provenance manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'schema=lean-sail-bootstrap/v1\n'
+            printf 'lean_version=4.33.0\n'
+            printf 'lean_release_sha256=%s\n' "$LEAN_SHA256"
+            printf 'sail_version=0.20.2\n'
+            printf 'sail_release_sha256=26b59bcab2d66e9f220d317dfe45f8b09170ed70e59a824553d6f525134d1ff6\n'
+            printf 'source_repository=%s\n' "$GITHUB_REPOSITORY"
+            printf 'source_head_sha=%s\n' '${{ github.event.pull_request.head.sha }}'
+            printf 'runner=%s-%s\n' '${{ runner.os }}' '${{ runner.arch }}'
+          } > out/manifest/toolchains.env
+          sha256sum out/lean/* out/sail/* > out/manifest/payload.sha256
+          find out -maxdepth 2 -type f -printf '%P\t%s bytes\n' | sort \
+            | tee out/manifest/files.txt
+
+      - name: Publish short-lived public release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='${{ github.event.pull_request.head.sha }}'
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$target" \
+              --title 'Temporary Lean 4.33.0 + Sail 0.20.2 bootstrap' \
+              --notes 'Official public release payloads, SHA-verified and split only to cross the execution-environment transfer ceiling. Temporary CI bootstrap asset.' \
+              --prerelease
+          fi
+          gh release upload "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber \
+            out/lean/* out/sail/* out/manifest/*
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url,assets \
+            | tee release-result.json
+
+      - name: Upload Lean part 00
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-00
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-00
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-01
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-01
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-02
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-02
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 03
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-03
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-03
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 04
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-04
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-04
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 05
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-05
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-05
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Lean part 06
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-v4.33.0-part-06
+          path: out/lean/lean-4.33.0-linux.tar.zst.part-06
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Sail binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sail-v0.20.2-linux-x86_64
+          path: out/sail/sail-Linux-x86_64.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload toolchain manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: lean-sail-toolchain-manifest
+          path: out/manifest/*
+          compression-level: 9
+          if-no-files-found: error
+          retention-days: 1
